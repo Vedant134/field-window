@@ -42,7 +42,9 @@ Each card explains calendar constraints, potential benefits, water questions, wo
 
 ### 3. Understand the evidence
 
-- Rainfall bars show how the same calendar window differed across past seasons.
+- Rainfall bars show how the same calendar window differed across about 30 past seasons.
+- A rain-against-demand chart shows, season by season, whether rain in the growing days matched atmospheric demand (reference evapotranspiration).
+- Three headline counts recalculate when the transition days change: seasons where rain met demand, wet days in the last 14 growing days, and the wait for the first rain.
 - An expandable cumulative chart shows when rain arrived in selected dry, middle, and wet seasons.
 - A calendar shows available growing time and reserved transition time before the next crop.
 - “Why this result?” exposes checks, sources, and uncertainty.
@@ -52,10 +54,11 @@ Each card explains calendar constraints, potential benefits, water questions, wo
 
 | Resource | Implementation | Contribution |
 | --- | --- | --- |
-| NASA POWER | Python requests daily rainfall and temperatures through the API, then saves the response. | Historical growing conditions at the selected worldwide coordinates, subject to NASA data availability. |
+| NASA POWER | Python requests daily rainfall, temperatures, and modelled root-zone wetness (1995–2024) through the API, then saves the response. | Historical growing conditions at the selected worldwide coordinates, subject to NASA data availability. |
 | UC SAREP oat profile | Manually reviewed guidance stored in the crop reference file. | Broad planting-month guidance and a cold-exposure reference; not a growth model. |
 | UC ANR California guidance | Manually reviewed management information. | General transition guidance and management context. |
 | Open-Meteo Geocoding / GeoNames | City search API converts a place name into selectable coordinates. It supplies no weather. | Keeps worldwide location entry simple. Coordinates remain a fallback. |
+| FAO Irrigation and Drainage Paper 56 | Hargreaves equation implemented in `analysis.py` and checked against a published worked example. | Reference evapotranspiration from temperature and latitude: atmospheric demand, not crop water use. |
 | Farmer inputs | Short form, saved locally in their browser. | Dates, existing practice, and irrigation category. |
 
 POWER is our only environmental-data service. Soil maps, SMAP, GPM, Landsat, ECOSTRESS, OpenET, and crop-history maps are deferred.
@@ -68,13 +71,14 @@ Weather retrieval is global; agricultural evidence is regional. Each crop catalo
 
 1. Clean records: check units and exclude incomplete historical seasons.
 2. Extract the farmer’s calendar window from each past year.
-3. Sum precipitation, calculate its median and range, and count temperature events.
-4. Compare start month with sourced guidance; subtract reserved transition days.
-5. Explain the result and report what cannot be established.
+3. Sum precipitation, calculate its median, quartiles, and range, and count temperature events.
+4. For the growing days left after the transition: compare rain with reference evapotranspiration, count wet days (at least 1 mm) in the first and last 14 days, and measure the wait for the first rain. Report each as “k of n past seasons.”
+5. Compare start month with sourced guidance; subtract reserved transition days.
+6. Explain the result and report what cannot be established.
 
 This is **historical seasonal analysis and transparent requirement checks**. Changing an assumption and recalculating is **sensitivity analysis**.
 
-The 2015–2024 archive is a historical comparison period, not training data. We do not forecast weather or train machine learning. Automatically searching for the best planting dates is not implemented or required for this baseline.
+The 1995–2024 archive (30 calendar years, the usual length of a climate reference period) is a historical comparison period, not training data. We do not forecast weather or train machine learning. Automatically searching for the best planting dates is not implemented or required for this baseline.
 
 ## Decisions and tradeoffs we explain to judges
 
@@ -82,17 +86,20 @@ The 2015–2024 archive is a historical comparison period, not training data. We
 | --- | --- | --- |
 | Global location selection; one regional crop example | Farmers can examine local weather while we validate agricultural evidence in stages. | Weather is location-specific, but crop guidance is not yet worldwide. |
 | POWER plus agricultural references | Connects environmental history with documented plant guidance. | No direct soil-moisture or field-condition measurement. |
+| Rain compared with reference evapotranspiration | Uses only data already downloaded and a published FAO method; works at any latitude. | Demand is for a reference grass surface. No crop coefficient, soil storage, or irrigation is modelled, so it is not a crop water requirement. |
 | Explicit checks instead of trained AI | Every result can be explained; we lack labeled farm-outcome data. | No learned yield or crop-success prediction. |
 | Few farmer questions | Reduces setup effort. | Equipment, soil, pest, and crop compatibility remain unknown. |
 | Comparisons instead of a best-crop score | Keeps farmer priorities and uncertainty visible. | No claim of a mathematically optimal choice. |
 
 ## What is working and what comes next
 
-**Working:** worldwide city search and coordinate input, location-specific NASA download/cache, historical calculations, input persistence, three scenario cards, goal switch, charts, calendar adjustment, source explanations, print/export, and calculation tests.
+**Working:** worldwide city search and coordinate input, location-specific NASA download/cache, historical calculations over 30 years (rain against demand, establishment and closing-fortnight wetness), input persistence, three scenario cards, goal switch, charts, calendar adjustment, source explanations, print/export, and calculation tests.
 
 **Next:** expand regional crop catalogs with documented local requirements; confirm a real local crop sequence; review whether the two alternatives are useful; add documented management and growth requirements where supported; test the results with an agricultural reviewer and a first-time user.
 
-**Known weakness:** both oat scenarios face similar weather over the same dates. Current weather summaries do not establish which management choice is superior. Strengthening that comparison is more valuable than adding datasets or decoration.
+**Known weakness:** both oat scenarios face the same weather over the same dates. The cards now differ in one evidence-based way: the forage card reads closing-fortnight wetness as a harvest and drying risk, the cover card as a termination-access question. Weather still does not establish which choice is superior, and no sourced growth-duration or heat-unit requirement is available to say whether forage would be ready. Finding that requirement is more valuable than adding datasets or decoration.
+
+**Data caution:** NASA POWER precipitation is a regional grid value (about half a degree). For the Merced sample it reports a median of about 307 mm for 15 October–1 March, which looks high for the valley floor; compare it with a local gauge before relying on the rain totals.
 
 We do not claim sufficient irrigation, crop maturity, yield, profit, measured erosion reduction, or measured soil improvement. The adjustable transition interval is a planning assumption informed by general guidance, not a universal crop requirement.
 
@@ -107,5 +114,6 @@ Demonstrate: enter dates → show historical weather → compare three cards →
 - [Field Shift challenge](https://www.spaceappschallenge.org/2026/challenges/adapting-farms-with-nasa-data/)
 - [Open-Meteo Geocoding / GeoNames attribution](https://open-meteo.com/en/docs/geocoding-api)
 - [NASA POWER daily API](https://power.larc.nasa.gov/docs/services/api/temporal/daily/)
+- [FAO Irrigation and Drainage Paper 56: reference evapotranspiration](https://www.fao.org/4/x0490e/x0490e00.htm)
 - [UC SAREP oat profile](https://sarep.ucdavis.edu/covercrop/oat)
 - [UC ANR California crop-rotation considerations](https://ucanr.edu/sites/default/files/2024-09/402186.pdf)

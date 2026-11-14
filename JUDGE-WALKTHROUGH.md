@@ -7,13 +7,13 @@ Farmers considering a crop between two existing crops must balance timing, water
 A decision-support prototype with worldwide city/coordinate weather lookup. Merced is the initial regional crop-guidance example. Outside that area, the app shows generic scenarios and explicitly requests regional crop evidence. It compares current gap management with oats for cover and oats for forage. The alternatives are management scenarios of one species; the complete local crop sequence still needs validation.
 
 ## Why NASA matters
-Daily NASA POWER observations provide the historical environmental context. The app summarizes the same calendar window across past years, shows precipitation variability and timing, and reports temperature exposure. Agricultural references contribute crop context. Farmer inputs supply dates, current practice, and irrigation category.
+Daily NASA POWER observations provide the historical environmental context. The app summarizes the same calendar window across about 30 past years, shows precipitation variability and timing, compares rain with atmospheric demand season by season, and reports temperature exposure. Agricultural references contribute crop context. Farmer inputs supply dates, current practice, and irrigation category.
 
 ## The analysis
 Data cleaning → complete-season selection → seasonal time-series summaries → sourced constraint checks → sensitivity analysis → explanations.
 
 ## Visual demonstration
-Show annual precipitation totals, then cumulative rainfall in dry/middle/wet seasons. Show the rotation-window timeline. Increase reserved transition time and watch available growing time shrink. Switch the farmer's goal to reveal the difference between potential soil-cover value and feed use.
+Show annual precipitation totals, then cumulative rainfall in dry/middle/wet seasons. Show the rotation-window timeline. Increase reserved transition time and watch available growing time shrink and the past-season counts recalculate. Switch the farmer's goal to reveal the difference between potential soil-cover value and feed use.
 
 ## Why one option over another?
 We explain goal alignment and constraints separately. Oats for cover directly serves a cover/residue objective; forage serves a feed objective but requires harvest readiness and equipment. Neither is automatically superior. Water, crop compatibility, and biological growth remain uncertain.
