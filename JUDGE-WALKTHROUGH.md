@@ -4,7 +4,7 @@
 Farmers considering a crop between two existing crops must balance timing, water uncertainty, management effort, and the intended use. A weather chart alone does not make that comparison.
 
 ## What we built
-A small decision-support prototype for one Merced-area example. It compares current gap management with oats for cover and oats for forage. The alternatives are management scenarios of one species; the complete local crop sequence still needs validation.
+A decision-support prototype with worldwide city/coordinate weather lookup. Merced is the initial regional crop-guidance example. Outside that area, the app shows generic scenarios and explicitly requests regional crop evidence. It compares current gap management with oats for cover and oats for forage. The alternatives are management scenarios of one species; the complete local crop sequence still needs validation.
 
 ## Why NASA matters
 Daily NASA POWER observations provide the historical environmental context. The app summarizes the same calendar window across past years, shows precipitation variability and timing, and reports temperature exposure. Agricultural references contribute crop context. Farmer inputs supply dates, current practice, and irrigation category.

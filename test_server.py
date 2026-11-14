@@ -2,6 +2,10 @@
 import unittest
 from datetime import date
 import server
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch, MagicMock
 
 
 def fixture():
@@ -17,6 +21,29 @@ def fixture():
 
 
 class WeatherMathTests(unittest.TestCase):
+    def test_global_coordinate_validation(self):
+        self.assertEqual(server.coordinates(-33.9249,18.4241),(-33.9249,18.4241))
+        for lat, lon in [(91,0),(0,181),(float('nan'),0),(0,float('inf'))]:
+            with self.assertRaises(ValueError):
+                server.coordinates(lat,lon)
+
+    def test_weather_requests_and_caches_are_location_specific(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = json.dumps(fixture()['data']).encode()
+        with TemporaryDirectory() as directory, patch.object(server, 'CACHE', Path(directory)), patch.object(server, 'urlopen', return_value=response) as fetch:
+            _, first = server.weather(28.6139,77.209)
+            _, second = server.weather(-33.9249,18.4241)
+            server.weather(28.6139,77.209)
+            self.assertIn('latitude=28.6139',first)
+            self.assertIn('latitude=-33.9249',second)
+            self.assertEqual(fetch.call_count,2)
+            self.assertEqual(len(list(Path(directory).glob('*.json'))),2)
+
+    def test_nonlocal_point_does_not_get_california_guidance(self):
+        result=server.summarize(date(2026,11,1),date(2026,11,4),fixture(),'test',-33.9249,18.4241)
+        self.assertEqual(result['point']['latitude'],-33.9249)
+        self.assertEqual(result['crop_guidance_scope'],'unavailable')
+
     def test_totals_counts_and_exclusive_end_date(self):
         result = server.summarize(date(2026, 11, 1), date(2026, 11, 4), fixture(), 'test')
         self.assertEqual(result['days'], 3)

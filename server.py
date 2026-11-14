@@ -7,20 +7,44 @@ from datetime import date, timedelta, datetime, timezone
 import json
 import statistics
 import math
+from functools import lru_cache
+from hashlib import sha256
+
+
+def coordinates(lat, lon):
+    lat, lon = float(lat), float(lon)
+    if not (math.isfinite(lat) and math.isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180):
+        raise ValueError('Latitude must be −90 to 90 and longitude −180 to 180.')
+    return round(lat, 4), round(lon, 4)
+
+
+@lru_cache(maxsize=100)
+def search_places(query):
+    if not 2 <= len(query) <= 120:
+        raise ValueError('Enter a city name between 2 and 120 characters.')
+    url = 'https://geocoding-api.open-meteo.com/v1/search?' + urlencode(
+        dict(name=query, count=8, language='en', format='json'))
+    with urlopen(url, timeout=20) as response:
+        data = json.load(response)
+    return [dict(label=', '.join(filter(None, [r['name'], r.get('admin1'), r.get('country')])),
+                 latitude=r['latitude'], longitude=r['longitude'])
+            for r in data.get('results', [])]
 
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / 'cache'
 CACHE.mkdir(exist_ok=True)
 
 def weather(lat, lon):
-    # Fixed demonstration geography; avoid repeated requests within one area.
-    if not (37.1 <= lat <= 37.6 and -120.8 <= lon <= -120.1):
-        raise ValueError('This prototype supports the Merced demonstration area only.')
-    path = CACHE / 'merced-power-2015-2024.json'
+    lat, lon = coordinates(lat, lon)
     params = dict(parameters='T2M,T2M_MIN,T2M_MAX,PRECTOTCORR', community='AG',
-                  latitude=37.3022, longitude=-120.4830, start='20150101',
+                  latitude=lat, longitude=lon, start='20150101',
                   end='20241231', format='JSON', **{'time-standard': 'LST'})
     url = 'https://power.larc.nasa.gov/api/temporal/daily/point?' + urlencode(params)
+    # Cache by complete request identity; never reuse Merced observations elsewhere.
+    path = CACHE / ('power-' + sha256(url.encode()).hexdigest()[:20] + '.json')
+    legacy = CACHE / 'merced-power-2015-2024.json'
+    if (lat, lon) == (37.3022, -120.483) and not path.exists() and legacy.exists():
+        path = legacy
     if path.exists():
         payload = json.loads(path.read_text(encoding='utf-8'))
     else:
@@ -32,7 +56,7 @@ def weather(lat, lon):
         path.write_text(json.dumps(payload), encoding='utf-8')
     return payload, url
 
-def summarize(start, end, payload, url):
+def summarize(start, end, payload, url, lat=37.3022, lon=-120.4830):
     # Map the month/day window onto ten historical seasons. Winter windows
     # use 2015–16 through 2023–24 to avoid incomplete endpoints.
     p = payload['data']['properties']['parameter']
@@ -81,7 +105,8 @@ def summarize(start, end, payload, url):
                 monthly=[dict(month=m, mean=round(statistics.mean(r['T2M'] for r in monthly[m]),1)) for m in order if m in monthly],
                 source_url=url, retrieved_at=payload['retrieved_at'],
                 parameters=payload['data'].get('parameters', {}),
-                data_period='2015–2024', point=dict(latitude=37.3022,longitude=-120.4830))
+                data_period='2015–2024', point=dict(latitude=lat,longitude=lon),
+                crop_guidance_scope='merced_example' if 37.1 <= lat <= 37.6 and -120.8 <= lon <= -120.1 else 'unavailable')
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -89,7 +114,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
-        if parsed.path != '/api/weather':
+        if parsed.path not in ('/api/weather', '/api/places'):
             # Do not serve Python source or internal cache through the app.
             if parsed.path not in ('/', '/index.html', '/app.js', '/style.css', '/catalog.json', '/favicon.ico'):
                 self.send_error(404)
@@ -97,16 +122,21 @@ class Handler(SimpleHTTPRequestHandler):
             return super().do_GET()
         try:
             q = parse_qs(parsed.query)
-            a, b = date.fromisoformat(q['start'][0]), date.fromisoformat(q['end'][0])
-            if not 1 <= (b-a).days <= 365:
-                raise ValueError('Choose a window between 1 and 365 days.')
-            payload, url = weather(37.3022, -120.4830)
-            result = summarize(a,b,payload,url)
+            if parsed.path == '/api/places':
+                result = dict(results=search_places(q.get('q', [''])[0].strip()))
+            else:
+                lat, lon = coordinates(q.get('lat', ['37.3022'])[0], q.get('lon', ['-120.4830'])[0])
+                a, b = date.fromisoformat(q['start'][0]), date.fromisoformat(q['end'][0])
+                if not 1 <= (b-a).days <= 365:
+                    raise ValueError('Choose a window between 1 and 365 days.')
+                payload, url = weather(lat, lon)
+                result = summarize(a,b,payload,url,lat,lon)
             status = 200
         except (ValueError, KeyError) as exc:
             status, result = 400, {'error': str(exc)}
         except Exception:
-            status, result = 503, {'error': 'NASA POWER is unavailable and no saved data exists yet. Try again shortly. No weather values have been invented.'}
+            message = 'City search is unavailable. Try coordinates instead.' if parsed.path == '/api/places' else 'NASA POWER is unavailable for this location and no usable saved response could be loaded. Try again shortly. No weather values have been invented.'
+            status, result = 503, {'error': message}
         raw = json.dumps(result, allow_nan=False).encode()
         self.send_response(status)
         self.send_header('Content-Type','application/json')

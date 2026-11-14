@@ -10,10 +10,10 @@ Double-click Start.bat, then open http://127.0.0.1:8765. Keep the terminal open.
 Alternatively run `python server.py` in this directory. The active server may already be running.
 
 ## Scope
-One fixed Merced-area weather point; existing gap management versus oats managed for cover or forage. Two management alternatives of the same species make the tradeoffs visible without pretending weather alone selects a different crop. This is a researched scenario, not a locally validated rotation or planting recommendation. Previous and next crop species are not specified or screened for compatibility.
+Worldwide city search or coordinates select the NASA POWER request location. Merced remains the test case for crop guidance: existing gap management versus oats managed for cover or forage. Outside the Merced test area, strategies are generic and marked as needing regional crop guidance; California planting calendars are not applied. Two management alternatives of the same species make the tradeoffs visible without pretending weather alone selects a different crop. This is a researched scenario, not a locally validated rotation or planting recommendation. Previous and next crop species are not specified or screened for compatibility.
 
 ## Working features
-- Actual cached NASA POWER daily data, 2015–2024.
+- Worldwide city search (Open-Meteo Geocoding / GeoNames), coordinate fallback, and location-specific cached NASA POWER daily data, 2015–2024.
 - Dates, baseline, irrigation category; browser-local input persistence.
 - Seasonal rainfall distributions and cumulative curves for selected dry, middle-ranked, and wet seasons.
 - Historical freezing context and a literature-based oat cold-exposure screen; not predicted injury or survival.
@@ -42,7 +42,7 @@ catalog.json: compact crop evidence and provenance.
 server.py: standard-library web server, NASA API/cache, historical summaries.
 cache/merced-power-2015-2024.json: real downloaded response; preserve for offline demonstrations.
 
-NASA weather is gridded regional context, not a sensor on the field. Winter windows use nine complete seasons. Other windows may use ten. End dates are excluded; invalid leap-day endpoints are skipped. Chart labels use rounded seasonal totals; cumulative curves sum daily observations. Rainfall cannot establish irrigation sufficiency.
+New location caches are ignored by Git to avoid publishing user-selected coordinates. The original public Merced sample remains tracked for reproducibility. NASA weather is gridded regional context, not a sensor on the field. Winter windows use nine complete seasons. Other windows may use ten. End dates are excluded; invalid leap-day endpoints are skipped. Chart labels use rounded seasonal totals; cumulative curves sum daily observations. Rainfall cannot establish irrigation sufficiency.
 
 ## Demonstration
 1. Confirm dates and current practice; click Explore my options.
@@ -67,3 +67,6 @@ UC SAREP oat profile: https://sarep.ucdavis.edu/covercrop/oat
 UC ANR California annual rotation considerations: https://ucanr.edu/sites/default/files/2024-09/402186.pdf
 Challenge: https://www.spaceappschallenge.org/2026/challenges/adapting-farms-with-nasa-data/?tab=resources
 The oat profile compiles older literature. Its general guidance must be reviewed for current local cultivars and conditions. The sources do not validate our prototype as a farm recommendation system.
+
+## Global support boundary
+Weather access works by worldwide latitude/longitude where POWER has the requested data. City selection is a regional point, not a field boundary. A location without regional crop evidence receives weather context and generic scenarios, not a locally validated recommendation. Open-Meteo supplies coordinates only; NASA remains the sole weather provider. Geocoding attribution: https://open-meteo.com/en/docs/geocoding-api
