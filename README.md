@@ -1,6 +1,6 @@
 # Field Window — decision-support prototype
 
-Start with [the plain-language guide](SIMPLE-GUIDE.md), [the math](MATH.md), or [the judge walkthrough](JUDGE-WALKTHROUGH.md).
+Start with [the project overview](PROJECT.md) for the purpose, UI, resources, method, and judge-facing decisions and tradeoffs. This is the main project document. See [the math](MATH.md) for calculations and [the judge walkthrough](JUDGE-WALKTHROUGH.md) for demonstration notes.
 
 Run verification with `python -m unittest -v` and `node --check app.js`. GitHub Actions repeats these checks on pushes and pull requests. Keep `main` working; teammates can use short feature branches and pull requests. A saved public NASA response is included for a reproducible offline demonstration; it contains regional environmental records, not private farmer inputs.
 
