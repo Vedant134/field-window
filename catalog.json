@@ -1,0 +1,12 @@
+{
+  "species": "Oat (Avena sativa)",
+  "planting_months": [10, 11, 12, 1],
+  "cold_exposure_c": -8,
+  "transition_days_default": 20,
+  "transition_range_days": [10, 30],
+  "evidence": [
+    {"id": "oat", "title": "UC SAREP · Oat profile", "url": "https://sarep.ucdavis.edu/covercrop/oat", "use": "Broad California sowing months (October–January), cold exposure reference, and cover/forage uses. The profile draws on older literature; local cultivar and farm review are required."},
+    {"id": "transition", "title": "UC ANR · Cover Cropping Considerations in California Annual Crop Rotations (2024)", "url": "https://ucanr.edu/sites/default/files/2024-09/402186.pdf", "use": "General 10–30-day transition guidance for cover crop termination. The 20-day setting is an editable planning assumption within that range, not a species-specific requirement."}
+  ],
+  "limitations": "No validated growth-duration or forage harvest-stage model. No farm-specific water balance, soil assessment, pest screen, or yield prediction. Species example is not locally field-validated. The two alternatives compare management of the same species, not two different species."
+}
