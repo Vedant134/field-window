@@ -59,9 +59,35 @@ That is sensitivity analysis: vary one assumption and see its effect.
 
 We require valid observations for all four requested variables for each day of a season.
 Missing observations exclude that whole historical season from the comparison.
-Winter windows use nine complete seasons within 2015–2024; within-year windows can use ten.
-Impossible leap-day endpoints are skipped. Historical windows can differ by one day due to leap years.
+The archive is 1995–2024. Windows that cross New Year can use 29 seasons; within-year windows can use 30.
+A 29 February start or end date is treated as 28 February in non-leap years. Historical windows can differ by one day due to leap years.
 Seasonal precipitation totals are rounded to 0.1 mm for display. Calculations start with daily values.
+
+## 8. Rain against atmospheric demand
+
+Growing days = the window minus the reserved transition days, counted from the start.
+For each growing day we estimate reference evapotranspiration with the Hargreaves equation (FAO-56, equation 52):
+
+ET0 = 0.0023 × (Tmean + 17.8) × √(Tmax − Tmin) × 0.408 × Ra, in mm/day
+
+Tmean is (Tmax + Tmin) / 2. Ra is the sunlight reaching the top of the atmosphere for that latitude and day of year (FAO-56, equation 21), in MJ per square metre per day.
+Example: Tmin 15, Tmax 25, Ra 30 → 0.0023 × 37.8 × 3.162 × 0.408 × 30 = 3.4 mm/day.
+We sum ET0 and rain over the growing days of each season and count the seasons where rain was at least as large.
+ET0 describes a well-watered reference grass surface. It is not the water use of oats or any crop, and soil storage is ignored.
+Hargreaves uses temperature only; it can read high in humid places and low in windy ones.
+
+## 9. Wet days at the start and the finish
+
+A wet day has at least 1 mm of precipitation.
+We count wet days in the first 14 and the last 14 growing days of each season, and the number of days until the first wet day.
+Reported as medians, the middle half of seasons (25th to 75th percentile), and “k of n seasons had none.”
+Moving the transition slider moves the last 14 growing days, so these counts change. That is the sensitivity analysis.
+These are historical frequencies. With about 30 seasons, a count such as 21 of 29 is a description of the record, not a precise probability.
+
+## 10. Root-zone wetness
+
+NASA POWER supplies a modelled root-zone soil wetness between 0 and 1 (MERRA-2). We report its value on the first day of each season.
+It is a regional model output, not a field measurement, and a missing value never excludes a season.
 
 ## Method name
 

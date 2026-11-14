@@ -3,12 +3,12 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, urlencode
 from urllib.request import urlopen
-from datetime import date, timedelta, datetime, timezone
+from datetime import date, datetime, timezone
 import json
-import statistics
 import math
 from functools import lru_cache
 from hashlib import sha256
+import analysis
 
 
 def coordinates(lat, lon):
@@ -34,79 +34,51 @@ ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / 'cache'
 CACHE.mkdir(exist_ok=True)
 
+PARAMETERS = 'T2M,T2M_MIN,T2M_MAX,PRECTOTCORR,GWETROOT'
+SAMPLE = (37.3022, -120.483)
+
+
+def power_url(lat, lon):
+    params = dict(parameters=PARAMETERS, community='AG', latitude=lat, longitude=lon,
+                  start=f'{analysis.FIRST_YEAR}0101', end=f'{analysis.LAST_YEAR}1231',
+                  format='JSON', **{'time-standard': 'LST'})
+    return 'https://power.larc.nasa.gov/api/temporal/daily/point?' + urlencode(params)
+
+
+@lru_cache(maxsize=8)
+def _load(path, modified):
+    # Keyed by modification time so a rewritten cache file is re-read.
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
 def weather(lat, lon):
     lat, lon = coordinates(lat, lon)
-    params = dict(parameters='T2M,T2M_MIN,T2M_MAX,PRECTOTCORR', community='AG',
-                  latitude=lat, longitude=lon, start='20150101',
-                  end='20241231', format='JSON', **{'time-standard': 'LST'})
-    url = 'https://power.larc.nasa.gov/api/temporal/daily/point?' + urlencode(params)
+    url = power_url(lat, lon)
     # Cache by complete request identity; never reuse Merced observations elsewhere.
     path = CACHE / ('power-' + sha256(url.encode()).hexdigest()[:20] + '.json')
-    legacy = CACHE / 'merced-power-2015-2024.json'
-    if (lat, lon) == (37.3022, -120.483) and not path.exists() and legacy.exists():
-        path = legacy
+    sample = CACHE / f'merced-power-{analysis.FIRST_YEAR}-{analysis.LAST_YEAR}.json'
+    if (lat, lon) == SAMPLE and not path.exists() and sample.exists():
+        path = sample
     if path.exists():
-        payload = json.loads(path.read_text(encoding='utf-8'))
-    else:
-        with urlopen(url, timeout=75) as response:
-            raw = json.load(response)
-        if 'parameter' not in raw.get('properties', {}):
-            raise ValueError('NASA returned an unexpected response.')
-        payload = dict(retrieved_at=datetime.now(timezone.utc).isoformat(), data=raw)
-        path.write_text(json.dumps(payload), encoding='utf-8')
+        try:
+            return _load(str(path), path.stat().st_mtime_ns), url
+        except (OSError, ValueError):
+            pass  # unreadable cache: fall through and download again
+    with urlopen(url, timeout=75) as response:
+        raw = json.load(response)
+    if 'parameter' not in raw.get('properties', {}):
+        raise ValueError('NASA returned an unexpected response.')
+    payload = dict(retrieved_at=datetime.now(timezone.utc).isoformat(), data=raw)
+    if path == sample:
+        path = CACHE / ('power-' + sha256(url.encode()).hexdigest()[:20] + '.json')
+    # Write then rename, so an interrupted download never leaves a half-written cache.
+    partial = path.with_suffix('.part')
+    partial.write_text(json.dumps(payload), encoding='utf-8')
+    partial.replace(path)
     return payload, url
 
-def summarize(start, end, payload, url, lat=37.3022, lon=-120.4830):
-    # Map the month/day window onto ten historical seasons. Winter windows
-    # use 2015–16 through 2023–24 to avoid incomplete endpoints.
-    p = payload['data']['properties']['parameter']
-    fill = payload['data'].get('header', {}).get('fill_value', -999)
-    smd, emd = (start.month, start.day), (end.month, end.day)
-    cross = emd < smd
-    seasons = []
-    monthly = {}
-    for year in range(2015, 2024 if cross else 2025):
-        try:
-            a, b = date(year, *smd), date(year + int(cross), *emd)
-        except ValueError:
-            continue
-        rows = []
-        season_monthly = {}
-        cursor = a
-        while cursor < b:
-            key = cursor.strftime('%Y%m%d')
-            vals = {k: v.get(key) for k, v in p.items()}
-            if all(isinstance(vals.get(k), (float, int)) and math.isfinite(vals[k]) and vals[k] != fill
-                   for k in ('T2M', 'T2M_MIN', 'T2M_MAX', 'PRECTOTCORR')):
-                rows.append(vals)
-                bucket = season_monthly.setdefault(cursor.month, [])
-                bucket.append(vals)
-            cursor += timedelta(days=1)
-        expected = (b-a).days
-        if expected and len(rows) == expected:
-            for month, values in season_monthly.items():
-                monthly.setdefault(month, []).extend(values)
-            seasons.append(dict(label=f'{year}–{str(year+1)[2:]}' if cross else str(year),
-                                rain=round(sum(r['PRECTOTCORR'] for r in rows),1),
-                                freezing=sum(r['T2M_MIN'] <= 0 for r in rows),
-                                hot=sum(r['T2M_MAX'] >= 35 for r in rows),
-                                severe_cold=sum(r['T2M_MIN'] <= -8 for r in rows),
-                                daily_rain=[round(r['PRECTOTCORR'], 3) for r in rows],
-                                mean=round(statistics.mean(r['T2M'] for r in rows),1)))
-    if not seasons:
-        raise ValueError('No complete historical seasons available for these dates.')
-    days = (end-start).days
-    order = list(dict.fromkeys((start + timedelta(days=i)).month for i in range(days)))
-    return dict(days=days, seasons=seasons, cold_seasons=sum(s['severe_cold'] > 0 for s in seasons),
-                rain_median=round(statistics.median(s['rain'] for s in seasons),1),
-                rain_min=min(s['rain'] for s in seasons), rain_max=max(s['rain'] for s in seasons),
-                freezing_median=statistics.median(s['freezing'] for s in seasons),
-                hot_median=statistics.median(s['hot'] for s in seasons),
-                monthly=[dict(month=m, mean=round(statistics.mean(r['T2M'] for r in monthly[m]),1)) for m in order if m in monthly],
-                source_url=url, retrieved_at=payload['retrieved_at'],
-                parameters=payload['data'].get('parameters', {}),
-                data_period='2015–2024', point=dict(latitude=lat,longitude=lon),
-                crop_guidance_scope='merced_example' if 37.1 <= lat <= 37.6 and -120.8 <= lon <= -120.1 else 'unavailable')
+
+summarize = analysis.summarize
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -129,8 +101,12 @@ class Handler(SimpleHTTPRequestHandler):
                 a, b = date.fromisoformat(q['start'][0]), date.fromisoformat(q['end'][0])
                 if not 1 <= (b-a).days <= 365:
                     raise ValueError('Choose a window between 1 and 365 days.')
+                raw_transition = q.get('transition', ['0'])[0]
+                transition = int(raw_transition) if raw_transition.isdigit() else -1
+                if not 0 <= transition <= 365:
+                    raise ValueError('Transition days must be between 0 and 365.')
                 payload, url = weather(lat, lon)
-                result = summarize(a,b,payload,url,lat,lon)
+                result = summarize(a, b, payload, url, lat, lon, transition)
             status = 200
         except (ValueError, KeyError) as exc:
             status, result = 400, {'error': str(exc)}

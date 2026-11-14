@@ -13,11 +13,12 @@ Alternatively run `python server.py` in this directory. The active server may al
 Worldwide city search or coordinates select the NASA POWER request location. Merced remains the test case for crop guidance: existing gap management versus oats managed for cover or forage. Outside the Merced test area, strategies are generic and marked as needing regional crop guidance; California planting calendars are not applied. Two management alternatives of the same species make the tradeoffs visible without pretending weather alone selects a different crop. This is a researched scenario, not a locally validated rotation or planting recommendation. Previous and next crop species are not specified or screened for compatibility.
 
 ## Working features
-- Worldwide city search (Open-Meteo Geocoding / GeoNames), coordinate fallback, and location-specific cached NASA POWER daily data, 2015–2024.
+- Worldwide city search (Open-Meteo Geocoding / GeoNames), coordinate fallback, and location-specific cached NASA POWER daily data, 1995–2024.
 - Dates, baseline, irrigation category; browser-local input persistence.
 - Seasonal rainfall distributions and cumulative curves for selected dry, middle-ranked, and wet seasons.
 - Historical freezing context and a literature-based oat cold-exposure screen; not predicted injury or survival.
-- Three comparison cards with reasons and uncertainties.
+- Rain against atmospheric demand (FAO-56 Hargreaves reference evapotranspiration) per past season, plus wet-day counts for the first and last 14 growing days. These recalculate when the transition days change.
+- Three comparison cards with reasons and uncertainties; the forage and cover cards read the closing fortnight differently.
 - Soil-cover versus feed-use goal switch; this changes goal alignment, not measured agronomic superiority.
 - Visual calendar and an adjustable transition interval, supported by general California guidance.
 - Printable results and downloadable JSON including evidence and assumptions.
@@ -39,10 +40,12 @@ Do not interpret the historical count as a future success probability.
 index.html and style.css: UI.
 app.js: scenarios, goal alignment, timelines, chart rendering, and export.
 catalog.json: compact crop evidence and provenance.
-server.py: standard-library web server, NASA API/cache, historical summaries.
-cache/merced-power-2015-2024.json: real downloaded response; preserve for offline demonstrations.
+analysis.py: pure historical calculations (season selection, reference evapotranspiration, wet-day counts); no network or file access.
+server.py: standard-library web server, NASA API/cache.
+test_analysis.py, test_server.py: unit tests, including a published FAO-56 worked example.
+cache/merced-power-1995-2024.json: real downloaded response; preserve for offline demonstrations.
 
-New location caches are ignored by Git to avoid publishing user-selected coordinates. The original public Merced sample remains tracked for reproducibility. NASA weather is gridded regional context, not a sensor on the field. Winter windows use nine complete seasons. Other windows may use ten. End dates are excluded; invalid leap-day endpoints are skipped. Chart labels use rounded seasonal totals; cumulative curves sum daily observations. Rainfall cannot establish irrigation sufficiency.
+New location caches are ignored by Git to avoid publishing user-selected coordinates. The original public Merced sample remains tracked for reproducibility. NASA weather is gridded regional context, not a sensor on the field. Windows crossing New Year use 29 complete seasons. Other windows may use 30. End dates are excluded; a 29 February endpoint falls back to 28 February. Chart labels use rounded seasonal totals; cumulative curves sum daily observations. Rainfall cannot establish irrigation sufficiency.
 
 ## Demonstration
 1. Confirm dates and current practice; click Explore my options.
@@ -50,7 +53,7 @@ New location caches are ignored by Git to avoid publishing user-selected coordin
 3. Open When did the rain arrive? Explain why timing differs from totals.
 4. Compare current practice, oats for cover, and oats for forage.
 5. Switch between soil cover and feed use. Explain why a goal match is not proof of suitability.
-6. Open the transition assumption; increase from 20 to 30 days. Growing time decreases by ten days and the timeline updates.
+6. Open the transition assumption; increase from 20 to 30 days. Growing time decreases by ten days, the timeline updates, and the rain-against-demand and closing-fortnight counts recalculate.
 7. Open Why this result? and the sources.
 8. Name the remaining uncertainties instead of claiming yield, profit, water savings, or measured soil benefits.
 
